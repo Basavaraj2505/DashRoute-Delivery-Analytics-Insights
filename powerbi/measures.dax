@@ -1,0 +1,210 @@
+/*
+========================================================================================
+DashRoute Power BI DAX Measure Library
+Production-Ready, Documented, and Syntactically Valid DAX Measures
+Table Target: fact_deliveries (or dedicated _Measures table)
+========================================================================================
+*/
+
+// ==========================================
+// 1. CORE OPERATIONAL VOLUME & TRIP METRICS
+// ==========================================
+
+Total Deliveries = 
+COUNTROWS('fact_deliveries')
+/* Returns the total number of delivered orders in the current filter context */
+
+Total Distance KM = 
+SUM('fact_deliveries'[distance_km])
+/* Total cumulative transit distance in kilometers */
+
+Average Trip Distance KM = 
+AVERAGE('fact_deliveries'[distance_km])
+/* Mean transit displacement per delivery trip in kilometers */
+
+
+// ==========================================
+// 2. DURATION & VELOCITY METRICS
+// ==========================================
+
+Average Delivery Duration = 
+AVERAGE('fact_deliveries'[time_taken_min])
+/* Mean delivery time in minutes from merchant dispatch to customer drop-off */
+
+Median Delivery Duration = 
+MEDIAN('fact_deliveries'[time_taken_min])
+/* Median trip duration in minutes, robust against extreme outlier delivery delays */
+
+P90 Delivery Duration = 
+PERCENTILE.INC('fact_deliveries'[time_taken_min], 0.90)
+/* 90th percentile delivery duration: 90% of deliveries complete within this timeframe */
+
+P95 Delivery Duration = 
+PERCENTILE.INC('fact_deliveries'[time_taken_min], 0.95)
+/* 95th percentile delivery duration: identifies tail-risk operational friction */
+
+Std Dev Delivery Duration = 
+STDEV.P('fact_deliveries'[time_taken_min])
+/* Standard deviation of trip duration indicating operational consistency and variance */
+
+
+// ==========================================
+// 3. THRESHOLD & SLA BENCHMARK MEASURES
+// (Note: Dataset lacks customer promised ETA, so we benchmark against operational duration thresholds)
+// ==========================================
+
+Deliveries Above 30 Min = 
+CALCULATE(
+    COUNTROWS('fact_deliveries'),
+    'fact_deliveries'[time_taken_min] > 30.0
+)
+/* Total count of deliveries exceeding the standard 30-minute operational benchmark */
+
+% Above 30 Min = 
+DIVIDE(
+    [Deliveries Above 30 Min],
+    [Total Deliveries],
+    0.0
+)
+/* Proportion of total deliveries taking longer than 30 minutes */
+
+Deliveries Above 40 Min = 
+CALCULATE(
+    COUNTROWS('fact_deliveries'),
+    'fact_deliveries'[time_taken_min] > 40.0
+)
+/* Total count of extreme delay deliveries (> 40 minutes) */
+
+% Above 40 Min = 
+DIVIDE(
+    [Deliveries Above 40 Min],
+    [Total Deliveries],
+    0.0
+)
+/* Proportion of orders experiencing severe delays */
+
+
+// ==========================================
+// 4. SPEED CLASSIFICATION & QUALITY RATIOS
+// ==========================================
+
+Slow Deliveries = 
+CALCULATE(
+    COUNTROWS('fact_deliveries'),
+    'fact_deliveries'[delivery_speed] = "Slow"
+)
+/* Deliveries classified as Slow in the operational dispatch registry */
+
+Fast Deliveries = 
+CALCULATE(
+    COUNTROWS('fact_deliveries'),
+    'fact_deliveries'[delivery_speed] = "Fast"
+)
+/* Deliveries classified as Fast */
+
+% Slow Delivery Rate = 
+DIVIDE(
+    [Slow Deliveries],
+    [Total Deliveries],
+    0.0
+)
+/* Percentage of orders in the current context falling into the Slow speed category */
+
+% Fast Delivery Rate = 
+DIVIDE(
+    [Fast Deliveries],
+    [Total Deliveries],
+    0.0
+)
+/* Percentage of orders completed with rapid turnaround */
+
+
+// ==========================================
+// 5. DRIVER RATINGS & FLEET MAINTENANCE
+// ==========================================
+
+Average Courier Rating = 
+AVERAGE('fact_deliveries'[Delivery_person_Ratings])
+/* Mean driver rating (scale 1.0 to 5.0), automatically excluding missing/null values */
+
+Courier Rating Count = 
+COUNT('fact_deliveries'[Delivery_person_Ratings])
+/* Number of orders with valid courier rating data */
+
+Poor Condition Fleet Volume = 
+CALCULATE(
+    COUNTROWS('fact_deliveries'),
+    'fact_deliveries'[Vehicle_condition] = 0
+)
+/* Order volume handled by vehicles in maintenance Condition 0 (Poor) */
+
+% Poor Vehicle Condition = 
+DIVIDE(
+    [Poor Condition Fleet Volume],
+    [Total Deliveries],
+    0.0
+)
+/* Fleet exposure ratio to poorly maintained delivery vehicles */
+
+
+// ==========================================
+// 6. ROOT CAUSE & CONGESTION DELTA COMPARISONS
+// ==========================================
+
+Jam Traffic Duration = 
+CALCULATE(
+    [Average Delivery Duration],
+    'fact_deliveries'[Road_traffic_density] = "Jam"
+)
+/* Average duration during Jam congestion */
+
+Low Traffic Duration = 
+CALCULATE(
+    [Average Delivery Duration],
+    'fact_deliveries'[Road_traffic_density] = "Low"
+)
+/* Baseline duration during Low traffic conditions */
+
+Congestion Latency Penalty = 
+[Jam Traffic Duration] - [Low Traffic Duration]
+/* Quantifies exact minutes added to customer orders due to severe traffic gridlock */
+
+Festival Surge Duration = 
+CALCULATE(
+    [Average Delivery Duration],
+    'fact_deliveries'[Festival] = "Yes"
+)
+/* Average duration during holiday/festival periods */
+
+Non Festival Duration = 
+CALCULATE(
+    [Average Delivery Duration],
+    'fact_deliveries'[Festival] = "No"
+)
+/* Baseline duration on regular operating days */
+
+Festival Impact Penalty = 
+[Festival Surge Duration] - [Non Festival Duration]
+/* Quantifies additional delivery time incurred during festival volume spikes */
+
+
+// ==========================================
+// 7. DYNAMIC DURATION THRESHOLD (OPTIONAL WHAT-IF)
+// ==========================================
+// Requires a What-If Parameter table 'Duration_Threshold'[Threshold_Value] (e.g., 15 to 60 min, step 5)
+/*
+Dynamic Threshold Deliveries = 
+VAR SelectedThreshold = SELECTEDVALUE('Duration_Threshold'[Threshold_Value], 30)
+RETURN
+    CALCULATE(
+        COUNTROWS('fact_deliveries'),
+        'fact_deliveries'[time_taken_min] > SelectedThreshold
+    )
+
+% Above Dynamic Threshold = 
+DIVIDE(
+    [Dynamic Threshold Deliveries],
+    [Total Deliveries],
+    0.0
+)
+*/

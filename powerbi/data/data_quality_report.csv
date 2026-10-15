@@ -1,0 +1,8 @@
+column_name,expected_type,missing_count,completeness_pct,status,imputation_handling
+Delivery_person_Age,Float (Numeric),1019,97.38,Acceptable (2.61% Missing),Excluded from driver age aggregations; not imputed
+Delivery_person_Ratings,Float (Numeric 1.0 - 5.0),1055,97.29,Acceptable (2.71% Missing),Excluded from rating averages; not imputed
+Time_Orderd,Time String (HH:MM),835,97.86,Acceptable (2.14% Missing),Excluded from pickup latency; overall duration intact
+Time_taken (min),Float / Integer,0,100.0,Perfect (0% Missing),Primary target metric
+distance_km,Float (Numeric),0,100.0,Perfect (0% Missing),Haversine calculated distance intact
+Weather_conditions,Text (Categorical),0,100.0,Perfect (0% Missing),6 distinct valid categories
+Road_traffic_density,Text (Categorical),0,100.0,Perfect (0% Missing),4 distinct valid categories

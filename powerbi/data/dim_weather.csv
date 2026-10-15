@@ -1,0 +1,7 @@
+weather_conditions,weather_sort_order,weather_severity,safety_alert
+Sunny,1,Optimal,Normal
+Stormy,2,Adverse,Caution
+Sandstorms,3,Severe,High Caution
+Windy,4,Moderate,Caution
+Cloudy,5,Mild,Normal
+Fog,6,High Hazard,Speed Warning

@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DashRoute — Delivery Operations Intelligence Platform</title>
+    <meta name="description" content="An interactive analytics platform for understanding food delivery performance and identifying operational bottlenecks using traffic, weather, and delivery data.">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Plotly.js CDN -->
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #090d16;
+            --bg-secondary: #0f172a;
+            --bg-card: rgba(15, 23, 42, 0.85);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(99, 102, 241, 0.4);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-indigo: #6366f1;
+            --accent-cyan: #06b6d4;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --accent-purple: #8b5cf6;
+            --glass-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+            --glow: 0 0 25px rgba(99, 102, 241, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-primary);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.08) 0px, transparent 50%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+            padding-bottom: 60px;
+        }
+
+        header {
+            padding: 18px 36px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(9, 13, 22, 0.92);
+            backdrop-filter: blur(14px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-badge {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent-indigo), var(--accent-cyan));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 800;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+        }
+
+        .brand-text h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #ffffff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-text p {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .header-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            color: #34d399;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        .powerbi-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(245, 158, 11, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: #fbbf24;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .powerbi-pill:hover {
+            background: rgba(245, 158, 11, 0.22);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-emerald);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent-emerald);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 24px 36px;
+        }
+
+        /* Power BI Integration Banner */
+        .powerbi-banner {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            border-left: 4px solid #f59e0b;
+            border-radius: 14px;
+            padding: 16px 22px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--glass-shadow);
+            backdrop-filter: blur(12px);
+        }
+
+        .pbi-info h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #fbbf24;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .pbi-info p {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+        }
+
+        .pbi-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .pbi-badge {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border-color);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.74rem;
+            color: #cbd5e1;
+        }
+
+        /* Filter Controls */
+        .filter-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 18px 24px;
+            backdrop-filter: blur(16px);
+            box-shadow: var(--glass-shadow);
+            margin-bottom: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: flex-end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 170px;
+            flex: 1;
+        }
+
+        .filter-group label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 0.05em;
+        }
+
+        .filter-select {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 9px 12px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            outline: none;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .filter-select:hover, .filter-select:focus {
+            border-color: var(--accent-indigo);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+
+        .reset-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .reset-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        /* 5-Column Responsive KPI Cards Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 18px;
+            margin-bottom: 28px;
+        }
+
+        @media (max-width: 1200px) {
+            .kpi-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .kpi-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 480px) {
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .kpi-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 18px 20px;
+            backdrop-filter: blur(14px);
+            box-shadow: var(--glass-shadow);
+            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 125px;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--border-hover);
+            box-shadow: var(--glow);
+        }
+
+        .kpi-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent-indigo);
+        }
+
+        .kpi-card.cyan::before { background: var(--accent-cyan); }
+        .kpi-card.emerald::before { background: var(--accent-emerald); }
+        .kpi-card.amber::before { background: var(--accent-amber); }
+        .kpi-card.rose::before { background: var(--accent-rose); }
+
+        .kpi-title {
+            font-size: 0.74rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .kpi-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.02em;
+            margin: 6px 0 2px 0;
+        }
+
+        .kpi-subtext {
+            font-size: 0.74rem;
+            color: var(--text-muted);
+        }
+
+        /* Charts Layout */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 22px;
+            margin-bottom: 28px;
+        }
+
+        @media (max-width: 1024px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 18px 20px;
+            backdrop-filter: blur(16px);
+            box-shadow: var(--glass-shadow);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-card.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .chart-header h3 {
+            font-size: 0.98rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .chart-tag {
+            font-size: 0.74rem;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.04);
+            padding: 3px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-body {
+            width: 100%;
+            position: relative;
+        }
+
+        /* Bottlenecks Table */
+        .section-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 22px 24px;
+            backdrop-filter: blur(16px);
+            box-shadow: var(--glass-shadow);
+            margin-bottom: 28px;
+        }
+
+        .section-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-subtitle {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-bottom: 18px;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-secondary);
+            font-weight: 600;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.74rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.74rem;
+            font-weight: 600;
+        }
+
+        .badge-red { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .badge-blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+
+        /* Recommendations Cards */
+        .rec-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 18px;
+        }
+
+        .rec-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 18px;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .rec-card:hover {
+            border-color: var(--accent-indigo);
+            background: rgba(99, 102, 241, 0.04);
+        }
+
+        .rec-tag {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+
+        .rec-card h4 {
+            font-size: 0.98rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #ffffff;
+        }
+
+        .rec-impact {
+            background: rgba(16, 185, 129, 0.12);
+            color: #34d399;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: inline-block;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            align-self: flex-start;
+        }
+
+        .rec-card p {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .rec-action {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--accent-indigo);
+            border-top: 1px solid var(--border-color);
+            padding-top: 10px;
+        }
+
+        /* Power BI Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex !important;
+        }
+
+        .modal-content {
+            background: #0f172a;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            border-radius: 16px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 28px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <div class="brand-badge">⚡</div>
+            <div class="brand-text">
+                <h1>DashRoute</h1>
+                <p>Delivery Operations Intelligence Platform</p>
+            </div>
+        </div>
+        <div class="header-meta">
+            <span class="status-pill">
+                <span class="pulse-dot"></span>
+                <span>SQLite Engine (38,964 Orders)</span>
+            </span>
+            <button class="powerbi-pill" id="btn-open-pbi-modal" onclick="document.getElementById('pbi-modal').classList.add('active');">
+                <span>📊</span>
+                <span>Power BI Layer</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <!-- Power BI Integration Highlight Banner -->
+        <div class="powerbi-banner">
+            <div class="pbi-info">
+                <h3><span>📊</span> Dual Intelligence Architecture: Web Dashboard + Microsoft Power BI</h3>
+                <p>Export analysis-ready dimension & fact datasets directly to Power BI Desktop with dedicated DAX metrics and 4 executive report pages.</p>
+            </div>
+            <div class="pbi-badges">
+                <span class="pbi-badge">4 Report Pages</span>
+                <span class="pbi-badge">DAX Measure Library</span>
+                <span class="pbi-badge">Power Query M Pipeline</span>
+            </div>
+        </div>
+
+        <!-- Filter Panel -->
+        <div class="filter-panel">
+            <div class="filter-group">
+                <label for="filter-city">City Type</label>
+                <select id="filter-city" class="filter-select">
+                    <option value="">All Cities</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filter-weather">Weather</label>
+                <select id="filter-weather" class="filter-select">
+                    <option value="">All Weather Conditions</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filter-traffic">Traffic Density</label>
+                <select id="filter-traffic" class="filter-select">
+                    <option value="">All Traffic Densities</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filter-festival">Festival Season</label>
+                <select id="filter-festival" class="filter-select">
+                    <option value="">All Days</option>
+                </select>
+            </div>
+            <button id="btn-reset" class="reset-btn">Reset Filters</button>
+        </div>
+
+        <!-- 5-Column Responsive KPI Cards Grid -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-title">Total Deliveries</div>
+                <div id="kpi-total" class="kpi-value">--</div>
+                <div class="kpi-subtext">Active orders tracked</div>
+            </div>
+            <div class="kpi-card cyan">
+                <div class="kpi-title">Avg Delivery Time</div>
+                <div id="kpi-time" class="kpi-value">--</div>
+                <div class="kpi-subtext">Pickup to customer door</div>
+            </div>
+            <div class="kpi-card emerald">
+                <div class="kpi-title">Avg Distance</div>
+                <div id="kpi-dist" class="kpi-value">--</div>
+                <div class="kpi-subtext">Kilometers per route</div>
+            </div>
+            <div class="kpi-card amber">
+                <div class="kpi-title">Rider Rating</div>
+                <div id="kpi-rating" class="kpi-value">--</div>
+                <div class="kpi-subtext">Courier satisfaction score</div>
+            </div>
+            <div class="kpi-card rose">
+                <div class="kpi-title">Slow Speed Ratio</div>
+                <div id="kpi-slow" class="kpi-value">--</div>
+                <div class="kpi-subtext">% classified as Slow speed</div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="chart-grid">
+            <!-- Traffic Chart -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3>Traffic Density Impact</h3>
+                    <span class="chart-tag">Avg Duration & Slow Rate</span>
+                </div>
+                <div id="chart-traffic" class="chart-body" style="height: 320px;"></div>
+            </div>
+
+            <!-- Weather Chart -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3>Weather Conditions Velocity</h3>
+                    <span class="chart-tag">Avg Duration (Mins)</span>
+                </div>
+                <div id="chart-weather" class="chart-body" style="height: 320px;"></div>
+            </div>
+
+            <!-- Heatmap (Full Width) -->
+            <div class="chart-card full-width">
+                <div class="chart-header">
+                    <h3>Cross-Impact Heatmap: Traffic vs Weather Matrix</h3>
+                    <span class="chart-tag">Granular Mean Delivery Duration (Minutes)</span>
+                </div>
+                <div id="chart-heatmap" class="chart-body" style="height: 310px;"></div>
+            </div>
+
+            <!-- Distance Chart -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3>Distance Brackets & Latency</h3>
+                    <span class="chart-tag">Performance across trip length</span>
+                </div>
+                <div id="chart-distance" class="chart-body" style="height: 320px;"></div>
+            </div>
+
+            <!-- Vehicle Chart -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3>Fleet Maintenance & Vehicle Types</h3>
+                    <span class="chart-tag">Condition 0 (Poor) vs 2 (Good)</span>
+                </div>
+                <div id="chart-vehicle" class="chart-body" style="height: 320px;"></div>
+            </div>
+        </div>
+
+        <!-- Root Cause Bottlenecks -->
+        <div class="section-card">
+            <div class="section-title">
+                <span>🚨</span> High-Risk Operational Bottlenecks
+            </div>
+            <p class="section-subtitle">Identified recurring delivery condition combinations with highest delay latency (sample size ≥ 50 orders).</p>
+            <div class="table-responsive">
+                <table id="bottlenecks-table">
+                    <thead>
+                        <tr>
+                            <th>Traffic Density</th>
+                            <th>Weather</th>
+                            <th>City Tier</th>
+                            <th>Vehicle Condition</th>
+                            <th>Sample Orders</th>
+                            <th>Avg Time</th>
+                            <th>Slow Delivery Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bottlenecks-tbody">
+                        <tr><td colspan="7" style="text-align:center;">Loading bottleneck analysis...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Actionable Recommendations -->
+        <div class="section-card">
+            <div class="section-title">
+                <span>💡</span> Evidence-Based Strategic Recommendations
+            </div>
+            <p class="section-subtitle">Data-driven operational interventions derived from root-cause regression and bottleneck matrices.</p>
+            <div id="rec-container" class="rec-grid">
+                <!-- Recommendations populated via JS -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Power BI Integration Modal -->
+    <div id="pbi-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button id="modal-close" class="modal-close" onclick="document.getElementById('pbi-modal').classList.remove('active');">&times;</button>
+            <h2 style="color: #fbbf24; font-size: 1.25rem; margin-bottom: 12px; display:flex; align-items:center; gap:8px;">
+                <span>📊</span> Microsoft Power BI Architecture & Integration
+            </h2>
+            <p style="color: #cbd5e1; font-size: 0.88rem; line-height: 1.6; margin-bottom: 18px;">
+                DashRoute provides a fully decoupled Power BI reporting layer for executive leadership. The Python export pipeline (<code>powerbi/export_powerbi_data.py</code>) produces clean, validated datasets that ingest into Power BI Desktop.
+            </p>
+            
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; margin-bottom: 18px;">
+                <h4 style="color: #ffffff; font-size: 0.95rem; margin-bottom: 8px;">4-Page Enterprise Report Specification:</h4>
+                <ul style="color: #94a3b8; font-size: 0.84rem; line-height: 1.6; margin-left: 20px;">
+                    <li><strong>Page 1 - Executive Overview:</strong> High-level KPIs (Total Orders, Avg & Median Duration, 90th percentile, SLA threshold violations %, Duration distribution).</li>
+                    <li><strong>Page 2 - Delivery Performance:</strong> Segment performance across traffic densities, weather conditions, vehicle types, and distance brackets.</li>
+                    <li><strong>Page 3 - Root Cause Analysis:</strong> Traffic vs Weather cross-impact matrix, high-delay bottleneck segments, and data-backed mitigations.</li>
+                    <li><strong>Page 4 - Data Quality:</strong> Completeness audit, missing value breakdown, unmeasured variables (e.g. prep time), and analytical boundaries.</li>
+                </ul>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; margin-bottom: 18px;">
+                <h4 style="color: #ffffff; font-size: 0.95rem; margin-bottom: 8px;">Quick Start in Power BI Desktop:</h4>
+                <ol style="color: #94a3b8; font-size: 0.84rem; line-height: 1.6; margin-left: 20px;">
+                    <li>Run <code>.\venv\Scripts\python.exe powerbi/export_powerbi_data.py</code> to generate analytical tables in <code>powerbi/data/</code>.</li>
+                    <li>Open Power BI Desktop &rarr; <em>Get Data &rarr; Text/CSV</em> &rarr; import <code>fact_deliveries.csv</code>, <code>dim_traffic.csv</code>, and <code>dim_weather.csv</code>.</li>
+                    <li>Copy DAX measures from <code>powerbi/measures.dax</code> into your model.</li>
+                    <li>Review <code>powerbi/dashboard_design.md</code> for full canvas and theme specifications.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        const state = {
+            filters: { city: '', weather: '', traffic: '', festival: '' }
+        };
+
+        const chartIds = ['chart-traffic', 'chart-weather', 'chart-heatmap', 'chart-distance', 'chart-vehicle'];
+
+        // Initialize Dashboard
+        document.addEventListener('DOMContentLoaded', async () => {
+            attachEventListeners();
+            await loadFilterOptions();
+            await fetchKPIs();
+            await renderCharts();
+            await fetchSummaryAndBottlenecks();
+
+            // Smooth resize listener for all charts
+            window.addEventListener('resize', () => {
+                chartIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && el.data) {
+                        Plotly.Plots.resize(el);
+                    }
+                });
+            });
+        });
+
+        // Load filter dropdown options
+        async function loadFilterOptions() {
+            try {
+                const res = await fetch('/api/filters');
+                const data = await res.json();
+                populateSelect('filter-city', data.cities);
+                populateSelect('filter-weather', data.weather_conditions);
+                populateSelect('filter-traffic', data.traffic_densities);
+                populateSelect('filter-festival', data.festivals);
+            } catch (err) {
+                console.error('Failed to load filters:', err);
+            }
+        }
+
+        function populateSelect(elementId, items) {
+            const select = document.getElementById(elementId);
+            if (!select || !items) return;
+            items.forEach(item => {
+                if (item) {
+                    const opt = document.createElement('option');
+                    opt.value = item;
+                    opt.textContent = item;
+                    select.appendChild(opt);
+                }
+            });
+        }
+
+        // Fetch KPIs based on active filters
+        async function fetchKPIs() {
+            const params = new URLSearchParams();
+            if (state.filters.city) params.set('city', state.filters.city);
+            if (state.filters.weather) params.set('weather', state.filters.weather);
+            if (state.filters.traffic) params.set('traffic', state.filters.traffic);
+            if (state.filters.festival) params.set('festival', state.filters.festival);
+
+            try {
+                const res = await fetch(`/api/kpis?${params.toString()}`);
+                const data = await res.json();
+                document.getElementById('kpi-total').textContent = (data.total_deliveries || 0).toLocaleString();
+                document.getElementById('kpi-time').textContent = (data.avg_time_taken || 0) + ' min';
+                document.getElementById('kpi-dist').textContent = (data.avg_distance_km || 0) + ' km';
+                document.getElementById('kpi-rating').textContent = (data.avg_driver_rating || 0) + ' / 5.0';
+                document.getElementById('kpi-slow').textContent = (data.pct_slow || 0) + '%';
+            } catch (err) {
+                console.error('Failed to load KPIs:', err);
+            }
+        }
+
+        // Render Plotly charts
+        async function renderCharts() {
+            try {
+                const res = await fetch('/api/charts');
+                const charts = await res.json();
+
+                const config = { 
+                    responsive: true, 
+                    displayModeBar: false,
+                    scrollZoom: false
+                };
+
+                Plotly.newPlot('chart-traffic', charts.traffic_chart.data, charts.traffic_chart.layout, config);
+                Plotly.newPlot('chart-weather', charts.weather_chart.data, charts.weather_chart.layout, config);
+                Plotly.newPlot('chart-heatmap', charts.traffic_weather_heatmap.data, charts.traffic_weather_heatmap.layout, config);
+                Plotly.newPlot('chart-distance', charts.distance_tiers_chart.data, charts.distance_tiers_chart.layout, config);
+                Plotly.newPlot('chart-vehicle', charts.vehicle_efficiency_chart.data, charts.vehicle_efficiency_chart.layout, config);
+            } catch (err) {
+                console.error('Failed to render charts:', err);
+            }
+        }
+
+        // Fetch Summary, Bottlenecks, and Recommendations
+        async function fetchSummaryAndBottlenecks() {
+            try {
+                const res = await fetch('/api/summary');
+                const data = await res.json();
+
+                // Populate Bottlenecks Table
+                const tbody = document.getElementById('bottlenecks-tbody');
+                tbody.innerHTML = '';
+                (data.top_bottlenecks || []).forEach(row => {
+                    const tr = document.createElement('tr');
+                    const badgeClass = row.pct_slow > 50 ? 'badge-red' : (row.pct_slow > 25 ? 'badge-amber' : 'badge-blue');
+                    tr.innerHTML = `
+                        <td><strong>${row.road_traffic_density}</strong></td>
+                        <td>${row.weather_conditions}</td>
+                        <td>${row.city}</td>
+                        <td>Condition ${row.vehicle_condition}</td>
+                        <td>${row.order_count.toLocaleString()}</td>
+                        <td><strong>${row.avg_time_min} mins</strong></td>
+                        <td><span class="badge ${badgeClass}">${row.pct_slow}% Slow</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                // Populate Recommendations
+                const recContainer = document.getElementById('rec-container');
+                recContainer.innerHTML = '';
+                (data.recommendations || []).forEach(rec => {
+                    const div = document.createElement('div');
+                    div.className = 'rec-card';
+                    div.innerHTML = `
+                        <div>
+                            <div class="rec-tag">${rec.category}</div>
+                            <h4>${rec.title}</h4>
+                            <div class="rec-impact">${rec.impact}</div>
+                            <p>${rec.description}</p>
+                        </div>
+                        <div class="rec-action">Action: ${rec.action}</div>
+                    `;
+                    recContainer.appendChild(div);
+                });
+            } catch (err) {
+                console.error('Failed to load summary:', err);
+            }
+        }
+
+        // Event Listeners
+        function attachEventListeners() {
+            ['filter-city', 'filter-weather', 'filter-traffic', 'filter-festival'].forEach(id => {
+                document.getElementById(id).addEventListener('change', (e) => {
+                    const key = id.replace('filter-', '');
+                    state.filters[key] = e.target.value;
+                    fetchKPIs();
+                });
+            });
+
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                state.filters = { city: '', weather: '', traffic: '', festival: '' };
+                document.getElementById('filter-city').value = '';
+                document.getElementById('filter-weather').value = '';
+                document.getElementById('filter-traffic').value = '';
+                document.getElementById('filter-festival').value = '';
+                fetchKPIs();
+            });
+
+            // Power BI Modal
+            const modal = document.getElementById('pbi-modal');
+            document.getElementById('btn-open-pbi-modal').addEventListener('click', () => {
+                modal.classList.add('active');
+            });
+            document.getElementById('modal-close').addEventListener('click', () => {
+                modal.classList.remove('active');
+            });
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.classList.remove('active');
+            });
+        }
+    </script>
+</body>
+</html>

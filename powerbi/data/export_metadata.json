@@ -1,0 +1,23 @@
+{
+  "pipeline_name": "DashRoute Power BI Export Pipeline",
+  "version": "1.0.0",
+  "export_timestamp_utc": "2026-10-15T10:13:27.749174+00:00",
+  "source_file": {
+    "path": "E:\\food_distr_analysis\\zomato_cleaned.csv",
+    "filename": "zomato_cleaned.csv",
+    "sha256": "a76ed049cd698b189797b180ffce60dcdad7b45b99729cd171b5562ec585eb0c",
+    "size_bytes": 6662704
+  },
+  "records_exported": 38964,
+  "tables_generated": [
+    "fact_deliveries.csv",
+    "dim_traffic.csv",
+    "dim_weather.csv",
+    "summary_traffic_weather.csv",
+    "data_quality_report.csv"
+  ],
+  "analytical_consistency": {
+    "mean_delivery_time_min": 26.58,
+    "mean_distance_km": 9.77
+  }
+}

@@ -1,0 +1,5 @@
+road_traffic_density,traffic_sort_order,congestion_level,sla_multiplier
+Low,1,Minimal,1.0
+Medium,2,Moderate,1.15
+High,3,Severe,1.35
+Jam,4,Gridlock / Extreme,1.65
